@@ -92,7 +92,8 @@ class Detector(torch.nn.Module):
            Hint: Use extract_peak here
         """
         peaks = []
-        for channel_num, single_channel in enumerate(image):
+        output = self.forward(image)
+        for channel_num, single_channel in enumerate(output):
             l = extract_peak(single_channel, min_score=0)
             for peak in l:
                 peaks.append((channel_num, peak[0], peak[1], peak[2]))

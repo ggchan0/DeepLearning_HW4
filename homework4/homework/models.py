@@ -1,28 +1,64 @@
 import torch
 import torch.nn.functional as F
+import ipdb
 
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 def extract_peak(heatmap, max_pool_ks=7, min_score=-5, max_det=100):
-    """
-       Your code here.
-       Extract local maxima (peaks) in a 2d heatmap.
-       @heatmap: H x W heatmap containing peaks (similar to your training heatmap)
-       @max_pool_ks: Only return points that are larger than a max_pool_ks x max_pool_ks window around the point
-       @min_score: Only return peaks greater than min_score
-       @return: List of peaks [(score, cx, cy), ...], where cx, cy are the position of a peak and score is the
-                heatmap value at the peak. Return no more than max_det peaks per image
-    """
-    raise NotImplementedError('extract_peak')
+    maximum_in_neighbors = F.max_pool2d(heatmap[None][None], kernel_size=max_pool_ks, stride = 1, padding = max_pool_ks // 2)
 
+    maximum_in_neighbors = maximum_in_neighbors[0][0]
+    max_vals = []
+    for y in range(0, len(heatmap)):
+        for x in range(0, len(heatmap[0])):
+            if heatmap[y][x] == maximum_in_neighbors[y][x] and heatmap[y][x] > min_score:
+                max_vals.append((heatmap[y][x], x, y))
+
+    #ipdb.set_trace()
+    max_vals.sort(key=lambda val: val[0], reverse=True)
+
+    return max_vals[:max_det]
 
 class Detector(torch.nn.Module):
-    def __init__(self):
-        """
-           Your code here.
-           Setup your detection network
-        """
+    class Block(torch.nn.Module):
+        def __init__(self, n_input, n_output, kernel_size=3, stride=2):
+            super().__init__()
+            self.c1 = torch.nn.Conv2d(n_input, n_output, kernel_size=kernel_size, padding=kernel_size // 2,
+                                      stride=stride)
+            self.c2 = torch.nn.Conv2d(n_output, n_output, kernel_size=kernel_size, padding=kernel_size // 2)
+            self.c3 = torch.nn.Conv2d(n_output, n_output, kernel_size=kernel_size, padding=kernel_size // 2)
+            self.skip = torch.nn.Conv2d(n_input, n_output, kernel_size=1, stride=stride)
+
+        def forward(self, x):
+            return F.relu(self.c3(F.relu(self.c2(F.relu(self.c1(x)))))) + self.skip(x)
+
+    class UpBlock(torch.nn.Module):
+        def __init__(self, n_input, n_output, kernel_size=3, stride=2):
+            super().__init__()
+            self.c1 = torch.nn.ConvTranspose2d(n_input, n_output, kernel_size=kernel_size, padding=kernel_size // 2,
+                                      stride=stride, output_padding=1)
+
+        def forward(self, x):
+            return F.relu(self.c1(x))
+
+    def __init__(self, layers=[16, 32, 64, 96, 128], n_output_channels=3, kernel_size=3, use_skip=False):
         super().__init__()
-        raise NotImplementedError('Detector.__init__')
+        self.input_mean = torch.Tensor([0.3521554, 0.30068502, 0.28527516])
+        self.input_std = torch.Tensor([0.18182722, 0.18656468, 0.15938024])
+
+        c = 3
+        self.use_skip = use_skip
+        self.n_conv = len(layers)
+        skip_layer_size = [3] + layers[:-1]
+        for i, l in enumerate(layers):
+            self.add_module('conv%d' % i, self.Block(c, l, kernel_size, 2))
+            c = l
+        for i, l in list(enumerate(layers))[::-1]:
+            self.add_module('upconv%d' % i, self.UpBlock(c, l, kernel_size, 2))
+            c = l
+            if self.use_skip:
+                c += skip_layer_size[i]
+        self.classifier = torch.nn.Conv2d(c, n_output_channels, 1)
 
     def forward(self, x):
         """
@@ -30,7 +66,22 @@ class Detector(torch.nn.Module):
            Implement a forward pass through the network, use forward for training,
            and detect for detection
         """
-        raise NotImplementedError('Detector.forward')
+        z = (x - self.input_mean[None, :, None, None].to(x.device)) / self.input_std[None, :, None, None].to(x.device)
+        up_activation = []
+        for i in range(self.n_conv):
+            # Add all the information required for skip connections
+            up_activation.append(z)
+            z = self._modules['conv%d'%i](z)
+
+        for i in reversed(range(self.n_conv)):
+            z = self._modules['upconv%d'%i](z)
+            # Fix the padding
+            z = z[:, :, :up_activation[i].size(2), :up_activation[i].size(3)]
+            # Add the skip connection
+            if self.use_skip:
+                z = torch.cat([z, up_activation[i]], dim=1)
+        #return self.classifier(z)
+        return torch.sigmoid(self.classifier(z))
 
     def detect(self, image):
         """
@@ -41,7 +92,16 @@ class Detector(torch.nn.Module):
                     return no more than 100 detections per image
            Hint: Use extract_peak here
         """
-        raise NotImplementedError('Detector.detect')
+        peaks = []
+        for channel_num, single_channel in enumerate(image):
+            l = extract_peak(single_channel, min_score=0)
+            for peak in l:
+                peaks.append((channel_num, peak[0], peak[1], peak[2]))
+
+
+        peaks.sort(key=lambda val: val[1], reverse=True)
+
+        return peaks[:100]
 
     def detect_with_size(self, image):
         """
@@ -52,7 +112,6 @@ class Detector(torch.nn.Module):
                     return no more than 100 detections per image
            Hint: Use extract_peak here
         """
-        raise NotImplementedError('Detector.detect_with_size')
 
 
 def save_model(model):

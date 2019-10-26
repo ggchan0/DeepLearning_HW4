@@ -93,9 +93,7 @@ class Detector(torch.nn.Module):
            Hint: Use extract_peak here
         """
         peaks = []
-        toTensor = dense_transforms.ToTensor()
-        print(toTensor(image).shape)
-        output = self.forward(toTensor(image))
+        output = self.forward(image[None])
         for channel_num, single_channel in enumerate(output):
             l = extract_peak(single_channel, min_score=0)
             for peak in l:

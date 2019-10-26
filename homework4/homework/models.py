@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 from . import dense_transforms
+import ipdb
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
@@ -93,8 +94,11 @@ class Detector(torch.nn.Module):
            Hint: Use extract_peak here
         """
         peaks = []
-        output = self.forward(image[None])
-        for channel_num, single_channel in enumerate(output):
+
+        model = load_model()
+        model.eval()
+        output = model(image) #returns size of [1, 3, 96, 128]
+        for channel_num, single_channel in enumerate(output[0]):
             l = extract_peak(single_channel, min_score=0)
             for peak in l:
                 peaks.append((channel_num, peak[0], peak[1], peak[2]))

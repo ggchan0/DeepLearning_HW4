@@ -45,6 +45,7 @@ def train(args):
     for epoch in range(args.num_epoch):
         model.train()
         conf = ConfusionMatrix()
+        running_loss = 0
         for data in train_data:
             img = data[0]
             label = data[1]
@@ -60,6 +61,7 @@ def train(args):
                                                               label_to_pil_image(logit[0].argmax(dim=0).cpu()).
                                                               convert('RGB')), global_step, dataformats='HWC')
 
+            running_loss += loss_val.item()
             if train_logger is not None:
                 train_logger.add_scalar('loss', loss_val, global_step)
             #conf.add(logit.argmax(1), label)
@@ -101,6 +103,7 @@ def train(args):
             print('epoch %-3d \t acc = %0.3f \t val acc = %0.3f \t iou = %0.3f \t val iou = %0.3f' %
                   (epoch, conf.global_accuracy, val_conf.global_accuracy, conf.iou, val_conf.iou))
         '''
+        print("epoch: ", epoch, "loss: ", running_loss)
         save_model(model)
 
 if __name__ == '__main__':

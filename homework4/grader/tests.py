@@ -90,7 +90,7 @@ class ExtractPeakGrader(Grader):
         assert all([s > min_score for s, cx, cy in p]), "Returned a peak below min_score"
         assert all([s == hm[cy, cx] for s, cx, cy in p]), "Score does not match heatmap"
 
-    #@Case(score=5)
+    @Case(score=5)
     def test_format(self, min_score=0):
         """return value"""
         ep = self.module.extract_peak
@@ -100,7 +100,7 @@ class ExtractPeakGrader(Grader):
             assert len(p) <= i, "Expected at most %d peaks, got %d" % (i, len(p))
             self.test_det(p, img, min_score=min_score)
 
-    #@Case(score=5)
+    @Case(score=5)
     def test_radius1(self, min_score=0):
         """radius=1"""
         img = torch.randn(54, 123)
@@ -108,7 +108,7 @@ class ExtractPeakGrader(Grader):
         assert len(p) == (img > 0).sum(), 'Expected exactly %d detections, got %d' % (len(p), (img > 0).sum())
         self.test_det(p, img, min_score=min_score)
 
-    #@Case(score=5)
+    @Case(score=5)
     def test_manyl(self, min_score=0, max_pool_ks=5):
         """peak extraction"""
         from functools import partial
@@ -119,7 +119,7 @@ class ExtractPeakGrader(Grader):
         assert len(ep((torch.arange(100).view(10, 10) == 55).float())) == 1, "Single peak expected"
         assert len(ep((torch.arange(100).view(10, 10) == 55).float() - 1)) == 0, "No peak expected"
 
-    #@Case(score=5)
+    @Case(score=5)
     def test_random(self, min_score=0, max_pool_ks=5):
         """randomized test"""
         from functools import partial

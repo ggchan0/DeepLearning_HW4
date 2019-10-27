@@ -1,6 +1,12 @@
 import torch
 import torch.nn.functional as F
 from . import dense_transforms
+import signal, sys, traceback
+
+def signal_handler(sig, frame):
+    print('why was this called')
+
+signal.signal(signal.SIGINT, singal_handler)
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 

@@ -27,8 +27,11 @@ def train(args):
     if args.continue_training:
         model.load_state_dict(torch.load(path.join(path.dirname(path.abspath(__file__)), 'detector.th')))
 
-    optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=1e-3)
-    #optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
+    optimizer = None
+    if args.optimizer.lower() == "sgd":
+        optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=1e-3)
+    else:
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
     #loss = torch.nn.CrossEntropyLoss(weight=w / w.mean()).to(device)
     loss = torch.nn.BCEWithLogitsLoss(pos_weight=None).to(device)
 
@@ -50,6 +53,7 @@ def train(args):
             img = data[0]
             label = data[1]
             img, label = img.to(device), label.to(device).float()
+            print(label)
 
             logit = model(img)
             loss_val = loss(logit, label)
@@ -117,6 +121,7 @@ if __name__ == '__main__':
     parser.add_argument('-lr', '--learning_rate', type=float, default=1e-3)
     parser.add_argument('-g', '--gamma', type=float, default=0, help="class dependent weight for cross entropy")
     parser.add_argument('-c', '--continue_training', action='store_true')
+    parser.add_argument('-o', '--optimizer', default="SGD", help="optimizer, options: SGD, ADAM")
     parser.add_argument('-t', '--transform',
                         default='Compose([ColorJitter(0.9, 0.9, 0.9, 0.1), RandomHorizontalFlip(), ToTensor(), to_heatmap])')
 

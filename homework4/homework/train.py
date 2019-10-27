@@ -42,7 +42,7 @@ def train(args):
                                         dense_transforms.ToTensor(),
                                         dense_transforms.to_heatmap])
     train_data = load_detection_data('dense_data/train', num_workers=4, batch_size=200,transform=transform)
-    valid_data = load_detection_data('dense_data/valid', num_workers=4, batch_size=200)
+    valid_data = load_detection_data('dense_data/valid', num_workers=4, batch_size=200, transform=dense_transforms.Compose([dense_transforms.ToTensor(), dense_transforms.to_heatmap]))
 
     global_step = 0
     for epoch in range(args.num_epoch):
@@ -53,7 +53,6 @@ def train(args):
             img = data[0]
             label = data[1]
             img, label = img.to(device), label.to(device).float()
-            print(label)
 
             logit = model(img)
             loss_val = loss(logit, label)
@@ -81,6 +80,7 @@ def train(args):
             train_logger.add_scalar('iou', conf.iou, global_step)
 
         model.eval()
+
         '''
         val_conf = ConfusionMatrix()
         for data in valid_data:
@@ -106,6 +106,7 @@ def train(args):
         if valid_logger is None or train_logger is None:
             print('epoch %-3d \t acc = %0.3f \t val acc = %0.3f \t iou = %0.3f \t val iou = %0.3f' %
                   (epoch, conf.global_accuracy, val_conf.global_accuracy, conf.iou, val_conf.iou))
+
         '''
         print("epoch: ", epoch, "loss: ", running_loss)
         save_model(model)

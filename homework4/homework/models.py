@@ -13,9 +13,8 @@ def extract_peak(heatmap, max_pool_ks=7, min_score=-5, max_det=100):
     for y in range(0, len(heatmap)):
         for x in range(0, len(heatmap[0])):
             if heatmap[y][x] == maximum_in_neighbors[y][x] and heatmap[y][x] > min_score:
-                max_vals.append((heatmap[y][x], x, y))
+                max_vals.append((heatmap[y][x].item(), x, y))
 
-    #ipdb.set_trace()
     max_vals.sort(key=lambda val: val[0], reverse=True)
 
     return max_vals[:max_det]

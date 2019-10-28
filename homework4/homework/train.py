@@ -56,6 +56,7 @@ def train(args):
             label = data[1]
             img, label = img.to(device), label.to(device).float()
 
+            #focal loss as implemented here: https://www.kaggle.com/c/tgs-salt-identification-challenge/discussion/65938
             logit = model(img)
             loss_val = loss(logit, label)
             focal_loss = 1 * (1 - (torch.exp(-loss_val))) ** args.gamma * loss_val
@@ -70,7 +71,7 @@ def train(args):
                                                               label_to_pil_image(logit[0].argmax(dim=0).cpu()).
                                                               convert('RGB')), global_step, dataformats='HWC')
 
-            running_loss += loss_val.item()
+            running_loss += focal_loss.item()
             if train_logger is not None:
                 train_logger.add_scalar('loss', loss_val, global_step)
             conf.add(logit, label)

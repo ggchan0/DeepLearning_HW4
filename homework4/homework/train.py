@@ -6,7 +6,6 @@ from .utils import load_detection_data, ConfusionMatrix
 from . import dense_transforms
 import torch.utils.tensorboard as tb
 
-
 def train(args):
     from os import path
     model = Detector()
@@ -15,11 +14,12 @@ def train(args):
         train_logger = tb.SummaryWriter(path.join(args.log_dir, 'train'), flush_secs=1)
         valid_logger = tb.SummaryWriter(path.join(args.log_dir, 'valid'), flush_secs=1)
 
-    """
-    Your code here, modify your HW1 / HW2 code
-
-    """
     import torch
+
+    pos_weights = torch.rand(1, 3, 1, 1)
+    pos_weights[0][0][0][0] = 507.3183
+    pos_weights[0][1][0][0] = 1945.4604
+    pos_weights[0][2][0][0] = 1689.5607
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
@@ -33,7 +33,7 @@ def train(args):
     else:
         optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
     #loss = torch.nn.CrossEntropyLoss(weight=w / w.mean()).to(device)
-    loss = torch.nn.BCEWithLogitsLoss(pos_weight=None).to(device)
+    loss = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weights).to(device)
 
     import inspect
     #transform = eval(args.transform, {k: v for k, v in inspect.getmembers(dense_transforms) if inspect.isclass(v)})
@@ -67,7 +67,7 @@ def train(args):
             running_loss += loss_val.item()
             if train_logger is not None:
                 train_logger.add_scalar('loss', loss_val, global_step)
-            #conf.add(logit.argmax(1), label)
+            conf.add(logit, label)
 
             optimizer.zero_grad()
             loss_val.backward()
@@ -81,14 +81,14 @@ def train(args):
 
         model.eval()
 
-        '''
+
         val_conf = ConfusionMatrix()
         for data in valid_data:
             img = data[0]
             label = data[1]
             img, label = img.to(device), label.to(device).float()
             logit = model(img)
-            val_conf.add(logit.argmax(1), label)
+            val_conf.add(logit, label)
 
         if valid_logger is not None:
             valid_logger.add_image('image', img[0], global_step)
@@ -107,7 +107,7 @@ def train(args):
             print('epoch %-3d \t acc = %0.3f \t val acc = %0.3f \t iou = %0.3f \t val iou = %0.3f' %
                   (epoch, conf.global_accuracy, val_conf.global_accuracy, conf.iou, val_conf.iou))
 
-        '''
+
         print("epoch: ", epoch, "loss: ", running_loss)
         save_model(model)
 

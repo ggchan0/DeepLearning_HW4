@@ -81,8 +81,8 @@ class Detector(torch.nn.Module):
             # Add the skip connection
             if self.use_skip:
                 z = torch.cat([z, up_activation[i]], dim=1)
-        #return self.classifier(z)
-        return torch.sigmoid(self.classifier(z))
+        return self.classifier(z)
+        #return torch.sigmoid(self.classifier(z))
 
     def detect(self, image):
         """

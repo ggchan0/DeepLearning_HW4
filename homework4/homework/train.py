@@ -6,6 +6,8 @@ from .utils import load_detection_data, ConfusionMatrix
 from . import dense_transforms
 import torch.utils.tensorboard as tb
 
+
+
 def train(args):
     from os import path
     model = Detector()
@@ -56,6 +58,10 @@ def train(args):
 
             logit = model(img)
             loss_val = loss(logit, label)
+            focal_loss = 1 * (1 - (torch.exp(-loss_val))) ** args.gamma * loss_val
+            focal_loss = torch.mean(focal_loss)
+
+
             if train_logger is not None and global_step % 100 == 0:
                 train_logger.add_image('image', img[0], global_step)
                 train_logger.add_image('label', np.array(dense_transforms.label_to_pil_image(label[0].cpu()).
@@ -70,7 +76,7 @@ def train(args):
             conf.add(logit, label)
 
             optimizer.zero_grad()
-            loss_val.backward()
+            focal_loss.backward()
             optimizer.step()
             global_step += 1
 

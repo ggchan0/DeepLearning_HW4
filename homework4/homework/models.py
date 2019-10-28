@@ -97,9 +97,9 @@ class Detector(torch.nn.Module):
 
         model = load_model()
         model.eval()
-        output = F.sigmoid(model(image)) #returns size of [1, 3, 96, 128]
+        output = model(image) #returns size of [1, 3, 96, 128]
         for channel_num, single_channel in enumerate(output[0]):
-            l = extract_peak(single_channel, min_score=0.7)
+            l = extract_peak(single_channel, min_score=0.6)
             for peak in l:
                 peaks.append((channel_num, peak[0], peak[1], peak[2]))
 

@@ -6,6 +6,7 @@ import signal, sys, traceback
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 def extract_peak(heatmap, max_pool_ks=7, min_score=-5, max_det=100):
+    heatmap = heatmap.to(device)
     maximum_in_neighbors = F.max_pool2d(heatmap[None][None], kernel_size=max_pool_ks, stride = 1, padding = max_pool_ks // 2)
 
     maximum_in_neighbors = maximum_in_neighbors[0][0]
@@ -97,9 +98,9 @@ class Detector(torch.nn.Module):
 
         model = load_model()
         model.eval()
-        output = F.sigmoid(model(image)) #returns size of [1, 3, 96, 128]
+        output = model(image) #returns size of [1, 3, 96, 128]
         for channel_num, single_channel in enumerate(output[0]):
-            l = extract_peak(single_channel, min_score=0.6)
+            l = extract_peak(single_channel, min_score=0.75)
             for peak in l:
                 peaks.append((channel_num, peak[0], peak[1], peak[2]))
 
